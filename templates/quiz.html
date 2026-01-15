@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - {{ level['name'] }}{% endblock %}
+
+{% block content %}
+<div class="container quiz-page">
+    <div class="quiz-header">
+        <a href="{{ url_for('reset') }}" class="btn-home">🏠 Home</a>
+        <div class="quiz-progress">Question {{ question_num }}/{{ total }}</div>
+        <div class="quiz-score">Score: {{ score }}</div>
+    </div>
+    
+    <div class="quiz-container">
+        <h2 class="quiz-question">What emotion is this person showing?</h2>
+        
+        <div class="image-container">
+            <img src="{{ question['image'] }}" alt="Person showing emotion" class="emotion-image">
+        </div>
+        
+        <div id="feedback" class="feedback hidden"></div>
+        
+        <div class="options-container" id="optionsContainer">
+            {% for option in question['options'] %}
+            <button class="option-btn" onclick="selectAnswer('{{ option }}')">
+                <span class="option-emoji">{{ emojis[option] }}</span>
+                <span class="option-text">{{ option }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+let answerSelected = false;
+
+function selectAnswer(selected) {
+    if (answerSelected) return;
+    answerSelected = true;
+    
+    // Disable all buttons
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    // Send answer to server
+    fetch('/check_answer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ answer: selected })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Show feedback
+        const feedback = document.getElementById('feedback');
+        feedback.classList.remove('hidden');
+        
+        if (data.is_correct) {
+            feedback.className = 'feedback feedback-correct';
+            feedback.innerHTML = `
+                <div class="feedback-icon">✅</div>
+                <div class="feedback-text">Correct! ${data.emoji}</div>
+            `;
+        } else {
+            feedback.className = 'feedback feedback-incorrect';
+            feedback.innerHTML = `
+                <div class="feedback-icon">❌</div>
+                <div class="feedback-text">The correct answer is: ${data.correct_answer} ${data.emoji}</div>
+            `;
+        }
+        
+        // Highlight correct answer
+        buttons.forEach(btn => {
+            const btnText = btn.querySelector('.option-text').textContent;
+            if (btnText === data.correct_answer) {
+                btn.classList.add('correct-answer');
+            } else if (btnText === selected && !data.is_correct) {
+                btn.classList.add('wrong-answer');
+            }
+        });
+        
+        // Auto-advance to next question
+        setTimeout(() => {
+            if (data.next_question) {
+                window.location.href = '/quiz';
+            } else {
+                window.location.href = '/results';
+            }
+        }, 2000);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+        answerSelected = false;
+        buttons.forEach(btn => btn.disabled = false);
+    });
+}
+</script>
+{% endblock %}

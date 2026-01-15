@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Live Camera Test{% endblock %}
+
+{% block content %}
+<div class="container camera-page">
+    <div class="camera-header">
+        <a href="{{ url_for('home') }}" class="btn-home">🏠 Home</a>
+        <h2 class="page-title">📹 Live Emotion Detection</h2>
+        <div style="width: 100px;"></div>
+    </div>
+    
+    <div class="camera-container">
+        <p class="camera-instruction">Practice showing different emotions to the camera!</p>
+        
+        <div class="video-wrapper">
+            <div id="videoPlaceholder" class="video-placeholder">
+                <button id="startCameraBtn" class="start-camera-btn">
+                    <span class="btn-icon">🎥</span>
+                    <span>Start Camera</span>
+                </button>
+            </div>
+            
+            <video id="webcam" class="webcam-video hidden" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+            
+            <div id="emotionOverlay" class="emotion-overlay hidden">
+                <div id="emotionEmoji" class="emotion-emoji-large"></div>
+                <div id="emotionName" class="emotion-name"></div>
+                <div id="emotionConfidence" class="emotion-confidence"></div>
+            </div>
+            
+            <button id="stopCameraBtn" class="stop-camera-btn hidden">
+                <span>⏹️ Stop Camera</span>
+            </button>
+        </div>
+        
+        <div class="tips-section">
+            <h3 class="tips-title">💡 Tips:</h3>
+            <ul class="tips-list">
+                <li>Try making different facial expressions</li>
+                <li>The camera analyzes your face every second</li>
+                <li>Practice emotions you find challenging</li>
+                <li>This is a safe space to learn and experiment!</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+{% endblock %}

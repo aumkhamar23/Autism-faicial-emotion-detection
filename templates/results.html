@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Results{% endblock %}
+
+{% block content %}
+<div class="container results-page">
+    <div class="results-container">
+        <div class="trophy-icon">🏆</div>
+        
+        <h1 class="results-title">Quiz Complete!</h1>
+        
+        <div class="score-display">
+            <div class="score-number">{{ score }}/{{ total }}</div>
+            <div class="score-percentage">{{ percentage|int }}%</div>
+        </div>
+        
+        <div class="results-message">{{ message }}</div>
+        
+        <div class="results-details">
+            <div class="detail-item">
+                <span class="detail-label">Level:</span>
+                <span class="detail-value">{{ level['emoji'] }} {{ level['name'] }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Correct Answers:</span>
+                <span class="detail-value">{{ score }} out of {{ total }}</span>
+            </div>
+        </div>
+        
+        <div class="results-actions">
+            <a href="{{ url_for('start_quiz', level=session['level']) }}" class="btn-action btn-retry">
+                🔄 Try Again
+            </a>
+            <a href="{{ url_for('home') }}" class="btn-action btn-home-result">
+                🏠 Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Emotion Learning Journey{% endblock %}
+
+{% block content %}
+<div class="container home-page">
+    <div class="hero-section">
+        <h1 class="main-title">🎭 Emotion Learning Journey</h1>
+        <p class="subtitle">Learn to recognize emotions step by step</p>
+    </div>
+    
+    <div class="levels-grid">
+        <!-- Basic Level -->
+        <a href="{{ url_for('start_quiz', level='basic') }}" class="level-card level-green">
+            <div class="level-emoji">🟢</div>
+            <h3 class="level-title">{{ levels['basic']['name'] }}</h3>
+            <p class="level-desc">Happy • Sad • Angry • Surprise • Neutral</p>
+            <div class="level-count">5 Questions</div>
+        </a>
+        
+        <!-- Intermediate Level -->
+        <a href="{{ url_for('start_quiz', level='intermediate') }}" class="level-card level-yellow">
+            <div class="level-emoji">🟡</div>
+            <h3 class="level-title">{{ levels['intermediate']['name'] }}</h3>
+            <p class="level-desc">Confusion • Frustration • Disgust • Fear</p>
+            <div class="level-count">5 Questions</div>
+        </a>
+        
+        <!-- Complex Level -->
+        <a href="{{ url_for('start_quiz', level='complex') }}" class="level-card level-red">
+            <div class="level-emoji">🔴</div>
+            <h3 class="level-title">{{ levels['complex']['name'] }}</h3>
+            <p class="level-desc">Pride • Guilt • Embarrassment • Envy</p>
+            <div class="level-count">5 Questions</div>
+        </a>
+    </div>
+    
+    <div class="camera-section">
+        <a href="{{ url_for('camera') }}" class="camera-button">
+            <span class="camera-icon">📹</span>
+            <span class="camera-text">Live Camera Test</span>
+        </a>
+        <p class="camera-desc">Practice showing emotions with real-time feedback!</p>
+    </div>
+</div>
+{% endblock %}
