@@ -1,51 +1,511 @@
 {% extends "base.html" %}
+{% block title %}Live Emotion Detection{% endblock %}
 
-{% block title %}Live Camera Test{% endblock %}
+{% block extra_css %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #f0f4ff;
+    min-height: 100vh;
+  }
+
+  .camera-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* ── Header ── */
+  .camera-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .btn-home {
+    background: #fff;
+    border: 2px solid #c7d7ff;
+    color: #4a6cf7;
+    padding: 10px 18px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    transition: all .2s;
+  }
+  .btn-home:hover { background: #4a6cf7; color: #fff; }
+
+  .page-title {
+    font-size: clamp(20px, 4vw, 26px);
+    font-weight: 900;
+    color: #1e2d6b;
+    text-align: center;
+  }
+
+  /* ── Main layout ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 640px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* ── Video card ── */
+  .video-card {
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(74,108,247,.12);
+    border: 2px solid #e0e8ff;
+  }
+
+  .video-card-inner {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+    border-radius: 0;
+  }
+  #webcam.active { display: block; }
+
+  #canvas { display: none; }
+
+  /* Placeholder */
+  .video-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: #8899cc;
+    text-align: center;
+    padding: 20px;
+  }
+  .video-placeholder .cam-icon { font-size: 64px; opacity: .5; }
+  .video-placeholder p { font-size: 15px; font-weight: 600; }
+  .video-placeholder.hidden { display: none; }
+
+  /* Scanning ring overlay on video */
+  .scan-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 160px; height: 160px;
+    border: 3px dashed rgba(100,180,255,.5);
+    border-radius: 50%;
+    animation: spin 6s linear infinite;
+    pointer-events: none;
+    display: none;
+  }
+  .scan-ring.active { display: block; }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  /* Status bar below video */
+  .video-status {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8899cc;
+    text-align: center;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .video-status.scanning { color: #4a6cf7; }
+  .video-status.detected { color: #22c55e; }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+    justify-content: center;
+  }
+
+  .start-btn {
+    background: linear-gradient(135deg, #4a6cf7, #7c3aed);
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(74,108,247,.4); }
+
+  .stop-btn {
+    background: #fff;
+    color: #ef4444;
+    border: 2px solid #fecaca;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all .2s;
+    display: none;
+  }
+  .stop-btn.visible { display: flex; align-items: center; gap: 6px; }
+  .stop-btn:hover { background: #fef2f2; }
+
+  /* ── Emotion display card ── */
+  .emotion-card {
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(74,108,247,.12);
+    border: 2px solid #e0e8ff;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-height: 300px;
+    justify-content: center;
+    transition: border-color .4s, background .4s;
+  }
+
+  .emotion-card.detected {
+    border-color: var(--ec-color, #4a6cf7);
+    background: var(--ec-bg, #f0f4ff);
+  }
+
+  .emotion-waiting {
+    text-align: center;
+    color: #b0bcd8;
+  }
+  .emotion-waiting .wait-icon { font-size: 56px; margin-bottom: 10px; }
+  .emotion-waiting p { font-size: 16px; font-weight: 700; }
+
+  .emotion-result { display: none; text-align: center; }
+  .emotion-result.visible { display: block; }
+
+  .result-emoji {
+    font-size: 100px;
+    line-height: 1;
+    margin-bottom: 10px;
+    animation: popIn .3s cubic-bezier(.175,.885,.32,1.275);
+    display: block;
+  }
+  @keyframes popIn {
+    from { transform: scale(.5); opacity: 0; }
+    to   { transform: scale(1);  opacity: 1; }
+  }
+
+  .result-name {
+    font-size: 36px;
+    font-weight: 900;
+    color: #1e2d6b;
+    letter-spacing: -1px;
+  }
+
+  .result-desc {
+    font-size: 15px;
+    color: #6b7bb0;
+    font-weight: 600;
+    margin-top: 4px;
+    max-width: 200px;
+    line-height: 1.4;
+  }
+
+  /* confidence bar */
+  .confidence-wrap {
+    width: 100%;
+    max-width: 220px;
+    margin-top: 8px;
+  }
+  .confidence-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: #8899cc;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .confidence-bar {
+    height: 8px;
+    background: #e8eeff;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #4a6cf7, #7c3aed);
+    transition: width .5s ease;
+    width: 0%;
+  }
+
+  /* ── Tips ── */
+  .tips-card {
+    grid-column: 1 / -1;
+    background: #fff;
+    border-radius: 20px;
+    border: 2px solid #e0e8ff;
+    padding: 20px 24px;
+    box-shadow: 0 2px 10px rgba(74,108,247,.07);
+  }
+  .tips-card h3 {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e2d6b;
+    margin-bottom: 12px;
+  }
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .tip-item {
+    background: #f5f7ff;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a6cf7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tip-icon { font-size: 18px; }
+
+  .hidden { display: none !important; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container camera-page">
-    <div class="camera-header">
-        <a href="{{ url_for('home') }}" class="btn-home">🏠 Home</a>
-        <h2 class="page-title">📹 Live Emotion Detection</h2>
-        <div style="width: 100px;"></div>
-    </div>
-    
-    <div class="camera-container">
-        <p class="camera-instruction">Practice showing different emotions to the camera!</p>
-        
-        <div class="video-wrapper">
-            <div id="videoPlaceholder" class="video-placeholder">
-                <button id="startCameraBtn" class="start-camera-btn">
-                    <span class="btn-icon">🎥</span>
-                    <span>Start Camera</span>
-                </button>
-            </div>
-            
-            <video id="webcam" class="webcam-video hidden" autoplay playsinline></video>
-            <canvas id="canvas" class="hidden"></canvas>
-            
-            <div id="emotionOverlay" class="emotion-overlay hidden">
-                <div id="emotionEmoji" class="emotion-emoji-large"></div>
-                <div id="emotionName" class="emotion-name"></div>
-                <div id="emotionConfidence" class="emotion-confidence"></div>
-            </div>
-            
-            <button id="stopCameraBtn" class="stop-camera-btn hidden">
-                <span>⏹️ Stop Camera</span>
-            </button>
+<div class="camera-page">
+
+  <!-- Header -->
+  <div class="camera-header">
+    <a href="{{ url_for('home') }}" class="btn-home">🏠 Home</a>
+    <h2 class="page-title">📹 Live Emotion Detection</h2>
+    <div style="width:100px"></div>
+  </div>
+
+  <!-- Main grid: video | emotion display -->
+  <div class="main-grid">
+
+    <!-- Video card -->
+    <div class="video-card">
+      <div class="video-card-inner">
+        <!-- Placeholder -->
+        <div id="videoPlaceholder" class="video-placeholder">
+          <div class="cam-icon">📷</div>
+          <p>Click "Start Camera"<br>to begin</p>
         </div>
-        
-        <div class="tips-section">
-            <h3 class="tips-title">💡 Tips:</h3>
-            <ul class="tips-list">
-                <li>Try making different facial expressions</li>
-                <li>The camera analyzes your face every second</li>
-                <li>Practice emotions you find challenging</li>
-                <li>This is a safe space to learn and experiment!</li>
-            </ul>
-        </div>
+        <!-- Live video -->
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <!-- Scanning ring shown while active -->
+        <div id="scanRing" class="scan-ring"></div>
+      </div>
+
+      <div id="videoStatus" class="video-status">Camera off</div>
+
+      <div class="btn-row">
+        <button id="startBtn" class="start-btn">🎥 Start Camera</button>
+        <button id="stopBtn"  class="stop-btn">⏹️ Stop</button>
+      </div>
     </div>
+
+    <!-- Emotion display card -->
+    <div id="emotionCard" class="emotion-card">
+      <div id="emotionWaiting" class="emotion-waiting">
+        <div class="wait-icon">🤔</div>
+        <p>Start the camera to see<br>your emotion here!</p>
+      </div>
+
+      <div id="emotionResult" class="emotion-result">
+        <span id="resultEmoji"  class="result-emoji">😐</span>
+        <div  id="resultName"   class="result-name">Neutral</div>
+        <div  id="resultDesc"   class="result-desc"></div>
+        <div class="confidence-wrap">
+          <div class="confidence-label">
+            <span>Confidence</span>
+            <span id="confPct">0%</span>
+          </div>
+          <div class="confidence-bar">
+            <div id="confFill" class="confidence-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips row -->
+    <div class="tips-card">
+      <h3>💡 Tips for practicing</h3>
+      <div class="tips-grid">
+        <div class="tip-item"><span class="tip-icon">😊</span> Try smiling big for Happy</div>
+        <div class="tip-item"><span class="tip-icon">😮</span> Open your mouth for Surprise</div>
+        <div class="tip-item"><span class="tip-icon">😐</span> Relax your face for Neutral</div>
+        <div class="tip-item"><span class="tip-icon">💡</span> Good lighting helps a lot!</div>
+        <div class="tip-item"><span class="tip-icon">🔄</span> Detects every 2 seconds</div>
+        <div class="tip-item"><span class="tip-icon">🛡️</span> Your video stays on your device</div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+<script>
+const video       = document.getElementById('webcam');
+const canvas      = document.getElementById('canvas');
+const startBtn    = document.getElementById('startBtn');
+const stopBtn     = document.getElementById('stopBtn');
+const placeholder = document.getElementById('videoPlaceholder');
+const scanRing    = document.getElementById('scanRing');
+const statusEl    = document.getElementById('videoStatus');
+const emotionCard = document.getElementById('emotionCard');
+const waitingEl   = document.getElementById('emotionWaiting');
+const resultEl    = document.getElementById('emotionResult');
+const resultEmoji = document.getElementById('resultEmoji');
+const resultName  = document.getElementById('resultName');
+const resultDesc  = document.getElementById('resultDesc');
+const confPct     = document.getElementById('confPct');
+const confFill    = document.getElementById('confFill');
+
+let stream = null;
+let intervalId = null;
+
+// Emotion → colour theme + description
+const EMOTION_DATA = {
+  'Happy':        { emoji:'😊', color:'#16a34a', bg:'#f0fdf4', desc:'You look happy! Great smile 😄' },
+  'Sad':          { emoji:'😢', color:'#3b82f6', bg:'#eff6ff', desc:"It's okay to feel sad sometimes 💙" },
+  'Angry':        { emoji:'😡', color:'#dc2626', bg:'#fef2f2', desc:'Taking a deep breath can help 🌬️' },
+  'Surprise':     { emoji:'😲', color:'#f59e0b', bg:'#fffbeb', desc:'Something unexpected happened!' },
+  'Neutral':      { emoji:'😐', color:'#6b7280', bg:'#f9fafb', desc:'Calm and relaxed face 😌' },
+  'Disgust':      { emoji:'🤢', color:'#65a30d', bg:'#f7fee7', desc:'Something unpleasant nearby?' },
+  'Fear':         { emoji:'😨', color:'#7c3aed', bg:'#f5f3ff', desc:"It's safe here. You're okay 🤝" },
+  'Confusion':    { emoji:'🤔', color:'#0891b2', bg:'#ecfeff', desc:"Something doesn't quite make sense?" },
+  'Frustration':  { emoji:'😣', color:'#ea580c', bg:'#fff7ed', desc:'This can be really tough 💪' },
+  'Embarrassment':{ emoji:'😳', color:'#e11d48', bg:'#fff1f2', desc:"Everyone feels this way sometimes!" },
+  'Guilt':        { emoji:'😔', color:'#64748b', bg:'#f8fafc', desc:'Being aware of feelings is brave 🌟' },
+  'Pride':        { emoji:'😏', color:'#7c3aed', bg:'#faf5ff', desc:'You should feel proud!' },
+  'Envy':         { emoji:'😬', color:'#0d9488', bg:'#f0fdfa', desc:"It's human to want what others have" },
+  'Irritation':   { emoji:'😤', color:'#b45309', bg:'#fffbeb', desc:'Small things can feel big sometimes' },
+  'Boredom':      { emoji:'😒', color:'#475569', bg:'#f8fafc', desc:'Looking for something interesting!' },
+};
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width:{ideal:640}, height:{ideal:480} } });
+    video.srcObject = stream;
+    placeholder.classList.add('hidden');
+    video.classList.add('active');
+    scanRing.classList.add('active');
+    stopBtn.classList.add('visible');
+    startBtn.style.display = 'none';
+    statusEl.textContent = 'Scanning…';
+    statusEl.className = 'video-status scanning';
+
+    // Show result panel
+    waitingEl.style.display = 'none';
+    resultEl.classList.add('visible');
+
+    // Start analysis
+    setTimeout(analyzeEmotion, 1200);
+    intervalId = setInterval(analyzeEmotion, 2000);
+  } catch(err) {
+    alert('Could not access camera.\n\nPlease allow camera permission in your browser and try again.');
+    console.error(err);
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+
+  video.classList.remove('active');
+  scanRing.classList.remove('active');
+  placeholder.classList.remove('hidden');
+  stopBtn.classList.remove('visible');
+  startBtn.style.display = '';
+  statusEl.textContent = 'Camera off';
+  statusEl.className = 'video-status';
+
+  waitingEl.style.display = '';
+  resultEl.classList.remove('visible');
+  emotionCard.classList.remove('detected');
+  emotionCard.style.removeProperty('--ec-color');
+  emotionCard.style.removeProperty('--ec-bg');
+}
+
+function captureFrame() {
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+async function analyzeEmotion() {
+  if (!stream) return;
+  try {
+    const frameData = captureFrame();
+    const res  = await fetch('/analyze_emotion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frame: frameData })
+    });
+    const data = await res.json();
+    if (data.success) showEmotion(data.emotion, data.confidence);
+  } catch(e) { console.error('Analysis error:', e); }
+}
+
+function showEmotion(emotion, confidence) {
+  const info = EMOTION_DATA[emotion] || { emoji:'😐', color:'#6b7280', bg:'#f9fafb', desc:'' };
+
+  // Animate emoji change only if different
+  if (resultEmoji.textContent !== info.emoji) {
+    resultEmoji.style.animation = 'none';
+    requestAnimationFrame(() => {
+      resultEmoji.style.animation = '';
+      resultEmoji.textContent = info.emoji;
+    });
+  }
+
+  resultName.textContent = emotion;
+  resultDesc.textContent = info.desc;
+
+  const pct = Math.round(confidence * 100);
+  confPct.textContent  = pct + '%';
+  confFill.style.width = pct + '%';
+
+  // Colour-theme the card
+  emotionCard.classList.add('detected');
+  emotionCard.style.setProperty('--ec-color', info.color);
+  emotionCard.style.setProperty('--ec-bg',    info.bg);
+  resultName.style.color = info.color;
+
+  statusEl.textContent = '✅ Emotion detected!';
+  statusEl.className   = 'video-status detected';
+  setTimeout(() => {
+    if (stream) { statusEl.textContent = 'Scanning…'; statusEl.className = 'video-status scanning'; }
+  }, 1500);
+}
+
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click',  stopCamera);
+window.addEventListener('beforeunload', stopCamera);
+</script>
 {% endblock %}

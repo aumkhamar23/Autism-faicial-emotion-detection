@@ -1,132 +1,67 @@
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import os
+from flask.json.provider import DefaultJSONProvider
 from models.emotion_detector import EmotionDetector
+import numpy as np
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this-in-production'
 
-# Initialize emotion detector
+class NumpyJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        # Convert numpy arrays to standard Python lists
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        
+        # Convert numpy integers/floats to standard Python ints/floats
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+            
+        # Fall back to the default Flask behavior for everything else
+        return super().default(obj)
+
+app.json = NumpyJSONProvider(app)
 detector = EmotionDetector()
 
-# Question database
 QUESTIONS = {
     'basic': {
-        'name': 'Level 1: Basic Emotions',
-        'color': 'green',
-        'emoji': '🟢',
+        'name': 'Level 1: Basic Emotions','color': 'green','emoji': '🟢',
         'questions': [
-            {
-                'id': 1,
-                'image': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-                'emotion': 'Happy',
-                'options': ['Happy', 'Sad', 'Angry', 'Surprise', 'Neutral']
-            },
-            {
-                'id': 2,
-                'image': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-                'emotion': 'Neutral',
-                'options': ['Happy', 'Sad', 'Angry', 'Surprise', 'Neutral']
-            },
-            {
-                'id': 3,
-                'image': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
-                'emotion': 'Surprise',
-                'options': ['Happy', 'Sad', 'Angry', 'Surprise', 'Neutral']
-            },
-            {
-                'id': 4,
-                'image': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
-                'emotion': 'Happy',
-                'options': ['Happy', 'Sad', 'Angry', 'Surprise', 'Neutral']
-            },
-            {
-                'id': 5,
-                'image': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop',
-                'emotion': 'Neutral',
-                'options': ['Happy', 'Sad', 'Angry', 'Surprise', 'Neutral']
-            }
+            {'id':1,'image':r'static\images\happy.jpg','emotion':'Happy','options':['Happy','Sad','Angry','Surprise','Neutral']},
+            {'id':2,'image':r'static\images\neutral.jpg','emotion':'Neutral','options':['Happy','Sad','Angry','Surprise','Neutral']},
+            {'id':3,'image':r'static\images\surprise.jpg','emotion':'Surprise','options':['Happy','Sad','Angry','Surprise','Neutral']},
+            {'id':4,'image':r'static\images\sad.jpg','emotion':'Sad','options':['Happy','Sad','Angry','Surprise','Neutral']},
+            {'id':5,'image':r'static\images\angry.jpg','emotion':'Angry','options':['Happy','Sad','Angry','Surprise','Neutral']}
         ]
     },
     'intermediate': {
-        'name': 'Level 2: Intermediate Emotions',
-        'color': 'yellow',
-        'emoji': '🟡',
+        'name': 'Level 2: Intermediate Emotions','color': 'yellow','emoji': '🟡',
         'questions': [
-            {
-                'id': 1,
-                'image': 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=400&fit=crop',
-                'emotion': 'Confusion',
-                'options': ['Confusion', 'Frustration', 'Disgust', 'Fear', 'Boredom']
-            },
-            {
-                'id': 2,
-                'image': 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=400&fit=crop',
-                'emotion': 'Boredom',
-                'options': ['Confusion', 'Frustration', 'Disgust', 'Fear', 'Boredom']
-            },
-            {
-                'id': 3,
-                'image': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-                'emotion': 'Fear',
-                'options': ['Confusion', 'Frustration', 'Disgust', 'Fear', 'Boredom']
-            },
-            {
-                'id': 4,
-                'image': 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400&h=400&fit=crop',
-                'emotion': 'Frustration',
-                'options': ['Confusion', 'Frustration', 'Disgust', 'Fear', 'Boredom']
-            },
-            {
-                'id': 5,
-                'image': 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop',
-                'emotion': 'Confusion',
-                'options': ['Confusion', 'Frustration', 'Disgust', 'Fear', 'Boredom']
-            }
+            {'id':1,'image':r'static\images\confusion.jpg','emotion':'Confusion','options':['Confusion','Frustration','Disgust','Fear','Boredom']},
+            {'id':2,'image':r'static\images\boredom.jpg','emotion':'Boredom','options':['Confusion','Frustration','Disgust','Fear','Boredom']},
+            {'id':3,'image':r'static\images\fear.jpg','emotion':'Fear','options':['Confusion','Frustration','Disgust','Fear','Boredom']},
+            {'id':4,'image':r'static\images\frustration.jpg','emotion':'Frustration','options':['Confusion','Frustration','Disgust','Fear','Boredom']},
+            {'id':5,'image':r'static\images\confusion1.jpg','emotion':'Confusion','options':['Confusion','Frustration','Disgust','Fear','Boredom']}
         ]
     },
     'complex': {
-        'name': 'Level 3: Complex Emotions',
-        'color': 'red',
-        'emoji': '🔴',
+        'name': 'Level 3: Complex Emotions','color': 'red','emoji': '🔴',
         'questions': [
-            {
-                'id': 1,
-                'image': 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&h=400&fit=crop',
-                'emotion': 'Pride',
-                'options': ['Embarrassment', 'Guilt', 'Pride', 'Envy', 'Irritation']
-            },
-            {
-                'id': 2,
-                'image': 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop',
-                'emotion': 'Embarrassment',
-                'options': ['Embarrassment', 'Guilt', 'Pride', 'Envy', 'Irritation']
-            },
-            {
-                'id': 3,
-                'image': 'https://images.unsplash.com/photo-1507120410856-1f35574c3b45?w=400&h=400&fit=crop',
-                'emotion': 'Irritation',
-                'options': ['Embarrassment', 'Guilt', 'Pride', 'Envy', 'Irritation']
-            },
-            {
-                'id': 4,
-                'image': 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=400&fit=crop',
-                'emotion': 'Pride',
-                'options': ['Embarrassment', 'Guilt', 'Pride', 'Envy', 'Irritation']
-            },
-            {
-                'id': 5,
-                'image': 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=400&h=400&fit=crop',
-                'emotion': 'Guilt',
-                'options': ['Embarrassment', 'Guilt', 'Pride', 'Envy', 'Irritation']
-            }
+            {'id':1,'image':r'static\images\proud.jpg','emotion':'Pride','options':['Embarrassment','Guilt','Pride','Envy','Irritation']},
+            {'id':2,'image':r'static\images\Embarrassment.jpg','emotion':'Embarrassment','options':['Embarrassment','Guilt','Pride','Envy','Irritation']},
+            {'id':3,'image':r'static\images\irritation.jpg','emotion':'Irritation','options':['Embarrassment','Guilt','Pride','Envy','Irritation']},
+            {'id':4,'image':r'static\images\proud.jpg','emotion':'Pride','options':['Embarrassment','Guilt','Pride','Envy','Irritation']},
+            {'id':5,'image':r'static\images\guilt.jpg','emotion':'Guilt','options':['Embarrassment','Guilt','Pride','Envy','Irritation']}
         ]
     }
 }
 
 EMOTION_EMOJIS = {
-    'Happy': '😊', 'Sad': '😢', 'Angry': '😡', 'Surprise': '😲', 'Neutral': '😐',
-    'Confusion': '🤔', 'Frustration': '😣', 'Disgust': '🤢', 'Fear': '😨', 'Boredom': '😒',
-    'Embarrassment': '😳', 'Guilt': '😔', 'Pride': '😏', 'Envy': '😬', 'Irritation': '😤'
+    'Happy':'😊','Sad':'😢','Angry':'😡','Surprise':'😲','Neutral':'😐',
+    'Confusion':'🤔','Frustration':'😣','Disgust':'🤢','Fear':'😨','Boredom':'😒',
+    'Embarrassment':'😳','Guilt':'😔','Pride':'😏','Envy':'😬','Irritation':'😤'
 }
 
 @app.route('/')
@@ -138,95 +73,61 @@ def home():
 def start_quiz(level):
     if level not in QUESTIONS:
         return redirect(url_for('home'))
-    
     session['level'] = level
     session['current_question'] = 0
     session['score'] = 0
     session['total_questions'] = len(QUESTIONS[level]['questions'])
     session['answers'] = []
-    
     return redirect(url_for('quiz'))
 
 @app.route('/quiz')
 def quiz():
     if 'level' not in session:
         return redirect(url_for('home'))
-    
     level = session['level']
     question_num = session['current_question']
     level_data = QUESTIONS[level]
-    
     if question_num >= len(level_data['questions']):
         return redirect(url_for('results'))
-    
     question = level_data['questions'][question_num]
-    
-    return render_template('quiz.html',
-                         level=level_data,
-                         question=question,
-                         question_num=question_num + 1,
-                         total=session['total_questions'],
-                         score=session['score'],
-                         emojis=EMOTION_EMOJIS)
+    return render_template('quiz.html', level=level_data, question=question,
+                         question_num=question_num+1, total=session['total_questions'],
+                         score=session['score'], emojis=EMOTION_EMOJIS)
 
 @app.route('/check_answer', methods=['POST'])
 def check_answer():
     if 'level' not in session:
         return jsonify({'error': 'No active session'}), 400
-    
     selected = request.json.get('answer')
     level = session['level']
     question_num = session['current_question']
-    
     question = QUESTIONS[level]['questions'][question_num]
     correct_answer = question['emotion']
     is_correct = (selected == correct_answer)
-    
     if is_correct:
         session['score'] = session.get('score', 0) + 1
-    
     answers = session.get('answers', [])
-    answers.append({
-        'question': question_num + 1,
-        'selected': selected,
-        'correct': correct_answer,
-        'is_correct': is_correct
-    })
+    answers.append({'question': question_num+1, 'selected': selected, 'correct': correct_answer, 'is_correct': is_correct})
     session['answers'] = answers
     session['current_question'] = question_num + 1
-    
-    return jsonify({
-        'is_correct': is_correct,
-        'correct_answer': correct_answer,
-        'emoji': EMOTION_EMOJIS.get(correct_answer, ''),
-        'next_question': session['current_question'] < session['total_questions']
-    })
+    return jsonify({'is_correct': is_correct, 'correct_answer': correct_answer,
+                    'emoji': EMOTION_EMOJIS.get(correct_answer, ''),
+                    'next_question': session['current_question'] < session['total_questions']})
 
 @app.route('/results')
 def results():
     if 'level' not in session:
         return redirect(url_for('home'))
-    
     score = session.get('score', 0)
     total = session.get('total_questions', 0)
     percentage = (score / total * 100) if total > 0 else 0
     level_data = QUESTIONS[session['level']]
-    
-    if percentage == 100:
-        message = "🎉 Perfect Score! Amazing!"
-    elif percentage >= 80:
-        message = "🌟 Great job!"
-    elif percentage >= 60:
-        message = "👍 Good effort!"
-    else:
-        message = "💪 Keep practicing!"
-    
-    return render_template('results.html',
-                         score=score,
-                         total=total,
-                         percentage=percentage,
-                         message=message,
-                         level=level_data)
+    if percentage == 100: message = "🎉 Perfect Score! Amazing!"
+    elif percentage >= 80: message = "🌟 Great job!"
+    elif percentage >= 60: message = "👍 Good effort!"
+    else: message = "💪 Keep practicing!"
+    return render_template('results.html', score=score, total=total,
+                         percentage=percentage, message=message, level=level_data)
 
 @app.route('/camera')
 def camera():
@@ -237,20 +138,12 @@ def analyze_emotion():
     try:
         data = request.json
         frame_data = data.get('frame')
-        
         if not frame_data:
             return jsonify({'error': 'No frame data provided'}), 400
-        
         result = detector.analyze_frame(frame_data)
         return jsonify(result)
-        
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'emotion': 'Neutral',
-            'confidence': 0.0
-        }), 500
+        return jsonify({'success': False, 'error': str(e), 'emotion': 'Neutral', 'confidence': 0.0}), 500
 
 @app.route('/reset')
 def reset():
