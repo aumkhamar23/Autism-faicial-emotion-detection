@@ -22,11 +22,12 @@ import cv2
 import numpy as np
 import random
 import shutil
+import zipfile
 from pathlib import Path
 from collections import defaultdict
 
 from training.config import (
-    DATA_RAW, DATA_PROCESSED, EMOTIONS, NUM_CLASSES,
+    BASE_DIR, DATA_RAW, DATA_PROCESSED, EMOTIONS, NUM_CLASSES,
     IMG_SIZE, MAX_PER_CLASS, MIN_PER_CLASS,
     TRAIN_RATIO, VAL_RATIO, RANDOM_SEED, DATASET_SOURCES,
 )
@@ -194,7 +195,31 @@ def _save(item, dest_path: Path) -> bool:
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+def extract_zips():
+    """Auto-extract fer2013.zip and ckplus.zip from data/ if not already extracted."""
+    data_dir = BASE_DIR / 'data'
+    zips = {
+        'fer2013.zip': DATA_RAW / 'fer2013',
+        'ckplus.zip':  DATA_RAW / 'ckplus',
+    }
+    for zip_name, dest in zips.items():
+        zip_path = data_dir / zip_name
+        if not zip_path.exists():
+            print(f"  [SKIP] {zip_name} not found in data/ — skipping extraction")
+            continue
+        if dest.exists() and any(dest.iterdir()):
+            print(f"  [SKIP] {zip_name} already extracted")
+            continue
+        print(f"  Extracting {zip_name} ...")
+        with zipfile.ZipFile(zip_path) as z:
+            z.extractall(dest)
+        print(f"  Done -> {dest}")
+
+
 def main():
+    print("\n=== Step 0: Extracting zip files ===")
+    extract_zips()
+
     print("\n=== Step 1: Collecting raw image paths ===")
     pools = collect_raw_paths()
 
