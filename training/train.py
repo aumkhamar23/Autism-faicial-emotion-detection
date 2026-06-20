@@ -61,13 +61,13 @@ def make_dataset(split: str) -> tf.data.Dataset:
     ds = tf.keras.utils.image_dataset_from_directory(
         str(DATA_PROCESSED / split),
         labels='inferred',
-        label_mode='categorical',
+        label_mode='int',                # integer labels: 0=angry,1=disgust,...
         class_names=EMOTIONS,
         image_size=(IMG_SIZE, IMG_SIZE),
         batch_size=BATCH_SIZE,
         shuffle=(split == 'train'),
         seed=RANDOM_SEED,
-        color_mode='grayscale',          # FER2013 native — 1 channel
+        color_mode='grayscale',
     )
 
     # Normalise [0, 255] -> [0, 1]
@@ -147,6 +147,15 @@ def main(quick: bool = False):
     print('=== Loading datasets ===')
     train_ds = make_dataset('train')
     val_ds   = make_dataset('val')
+
+    # Sanity check — verify first batch has correct label distribution
+    print('\n=== Data sanity check ===')
+    for images, labels in train_ds.take(1):
+        print(f'  Batch images shape : {images.shape}  dtype={images.dtype}')
+        print(f'  Batch labels shape : {labels.shape}  dtype={labels.dtype}')
+        print(f'  Image value range  : [{float(tf.reduce_min(images)):.3f}, {float(tf.reduce_max(images)):.3f}]')
+        unique, counts = np.unique(labels.numpy(), return_counts=True)
+        print(f'  Label distribution : { {EMOTIONS[u]: int(c) for u, c in zip(unique, counts)} }')
 
     print(f'\n=== Building model ===')
     model = build_model()

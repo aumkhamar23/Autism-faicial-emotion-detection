@@ -65,7 +65,7 @@ def build_model() -> keras.Model:
 def compile_model(model: keras.Model, lr: float = 1e-3):
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss='categorical_crossentropy',
+        loss='sparse_categorical_crossentropy',  # works with integer labels
         metrics=['accuracy'],
     )
 

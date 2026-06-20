@@ -25,7 +25,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 from training.config import (
     DATA_PROCESSED, MODEL_DIR, MODEL_PATH,
-    IMG_SIZE, NUM_CLASSES, EMOTIONS, RANDOM_SEED,
+    IMG_SIZE, EMOTIONS, RANDOM_SEED,
 )
 
 BATCH_SIZE  = 64
@@ -37,7 +37,7 @@ def load_test_data() -> tf.data.Dataset:
     ds = tf.keras.utils.image_dataset_from_directory(
         str(DATA_PROCESSED / "test"),
         labels="inferred",
-        label_mode="categorical",
+        label_mode="int",
         class_names=EMOTIONS,
         image_size=(IMG_SIZE, IMG_SIZE),
         batch_size=BATCH_SIZE,
@@ -65,7 +65,7 @@ def plot_confusion_matrix(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred)
     cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100
 
-    fig, ax = plt.subplots(figsize=(9, 7))
+    _, ax = plt.subplots(figsize=(9, 7))
     sns.heatmap(
         cm_pct, annot=True, fmt=".1f", cmap="Blues",
         xticklabels=EMOTIONS, yticklabels=EMOTIONS,
