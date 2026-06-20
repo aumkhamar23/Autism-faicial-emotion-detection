@@ -84,22 +84,6 @@ def make_dataset(split: str) -> tf.data.Dataset:
 
 
 # ---------------------------------------------------------------------------
-# Class weights
-# ---------------------------------------------------------------------------
-
-def compute_class_weights(train_ds: tf.data.Dataset) -> dict:
-    counts = np.zeros(NUM_CLASSES, dtype=np.int64)
-    for _, labels in train_ds:
-        counts += tf.reduce_sum(labels, axis=0).numpy().astype(np.int64)
-    total = counts.sum()
-    weights = {i: float(total / (NUM_CLASSES * max(c, 1))) for i, c in enumerate(counts)}
-    print('\nClass weights:')
-    for i, em in enumerate(EMOTIONS):
-        print(f'  {em:12s}: {weights[i]:.3f}  (n={counts[i]})')
-    return weights
-
-
-# ---------------------------------------------------------------------------
 # Callbacks
 # ---------------------------------------------------------------------------
 
@@ -163,7 +147,6 @@ def main(quick: bool = False):
     print('=== Loading datasets ===')
     train_ds = make_dataset('train')
     val_ds   = make_dataset('val')
-    class_weights = compute_class_weights(train_ds)
 
     print(f'\n=== Building model ===')
     model = build_model()
@@ -177,7 +160,6 @@ def main(quick: bool = False):
         train_ds,
         validation_data=val_ds,
         epochs=epochs,
-        class_weight=class_weights,
         callbacks=make_callbacks(),
         verbose=1,
     )
