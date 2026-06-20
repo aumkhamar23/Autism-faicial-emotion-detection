@@ -43,6 +43,11 @@ def load_test_data() -> tf.data.Dataset:
         batch_size=BATCH_SIZE,
         shuffle=False,
         seed=RANDOM_SEED,
+        color_mode="grayscale",
+    )
+    ds = ds.map(
+        lambda x, y: (tf.cast(x, tf.float32) / 255.0, y),
+        num_parallel_calls=tf.data.AUTOTUNE,
     )
     return ds.prefetch(tf.data.AUTOTUNE)
 

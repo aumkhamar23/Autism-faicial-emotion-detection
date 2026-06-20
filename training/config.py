@@ -9,8 +9,8 @@ MODEL_DIR      = BASE_DIR / 'models'
 MODEL_PATH     = MODEL_DIR / 'custom_emotion_model.keras'
 
 # Image settings
-IMG_SIZE    = 48        # pixels, square, RGB — FER2013 native size, fast on CPU
-IMG_CHANNELS = 3
+IMG_SIZE     = 48        # pixels, square — FER2013 native size
+IMG_CHANNELS = 1         # grayscale — FER2013 native format, 3x fewer input params
 
 # Model backend: "custom_cnn" (no download needed, fast CPU training)
 #                "efficientnet" (requires internet to download ImageNet weights)
