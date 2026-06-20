@@ -27,7 +27,6 @@ from training.config import (
     DATA_PROCESSED, MODEL_DIR, MODEL_PATH,
     IMG_SIZE, NUM_CLASSES, EMOTIONS, RANDOM_SEED,
 )
-from training.model import FocalLoss
 
 BATCH_SIZE  = 64
 MATRIX_PATH = MODEL_DIR / "confusion_matrix.png"
@@ -82,10 +81,7 @@ def main():
         return
 
     print(f"Loading model: {MODEL_PATH}")
-    model = keras.models.load_model(
-        str(MODEL_PATH),
-        custom_objects={"FocalLoss": FocalLoss},
-    )
+    model = keras.models.load_model(str(MODEL_PATH))
 
     print("Loading test set ...")
     test_ds = load_test_data()

@@ -102,7 +102,7 @@ def make_callbacks() -> list:
         ),
         keras.callbacks.EarlyStopping(
             monitor="val_accuracy",
-            patience=8,
+            patience=10,
             restore_best_weights=True,
             verbose=1,
         ),

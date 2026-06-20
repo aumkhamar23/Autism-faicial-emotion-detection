@@ -158,9 +158,11 @@ def build_model(trainable_backbone: bool = False) -> keras.Model:
 
 
 def compile_model(model: keras.Model, lr: float = 1e-3):
+    # Categorical crossentropy is stable and works well with class_weight.
+    # Class weights in model.fit() handle the disgust imbalance instead of Focal Loss.
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss=FocalLoss(gamma=2.0, alpha=0.25),
+        loss="categorical_crossentropy",
         metrics=["accuracy"],
     )
 
