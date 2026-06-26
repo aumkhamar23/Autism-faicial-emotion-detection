@@ -1,9 +1,11 @@
 """
-Emotion CNN — clean, proven architecture for FER2013 (48x48 grayscale).
+Emotion CNN for FER2013 + CK+ (48x48 grayscale, integer labels).
 
-No BatchNormalization (avoids Keras 3 training-mode issues).
-Normalization and augmentation live in the tf.data pipeline (train.py),
-not inside the model — so inference receives raw [0,1] grayscale images.
+Key design choices:
+- BatchNorm after each conv block: prevents vanishing gradients in deep network
+- He initialization: correct for ReLU (2x larger than Glorot, faster early learning)
+- No softmax on final layer: use from_logits=True in loss for numerical stability
+- Augmentation lives in the tf.data pipeline (train.py), not here
 """
 
 import sys, os
@@ -15,57 +17,57 @@ import numpy as np
 
 from training.config import IMG_SIZE, IMG_CHANNELS, NUM_CLASSES
 
+HE = 'he_uniform'   # correct initializer for ReLU networks
+
 
 def build_model() -> keras.Model:
     """
-    4-block CNN proved on FER2013.
-    Input: (48, 48, 1) normalised to [0, 1].
-    Output: (7,) softmax probabilities.
-
-    Architecture:
-      48 -> conv32 -> conv64 -> pool -> drop
-      24 -> conv128 -> conv128 -> pool -> drop
-      12 -> conv256 -> conv256 -> pool -> drop
-       6 -> conv512 -> GAP
-           -> Dense(512) -> drop -> Dense(7)
+    3-block CNN with BatchNorm.
+    Input : (48, 48, 1) normalised [0, 1]
+    Output: (7,) raw logits  — use SparseCategoricalCrossentropy(from_logits=True)
     """
     return keras.Sequential([
         keras.Input(shape=(IMG_SIZE, IMG_SIZE, IMG_CHANNELS)),
 
         # Block 1: 48 -> 24
-        layers.Conv2D(32, 3, padding='same', activation='relu'),
-        layers.Conv2D(64, 3, padding='same', activation='relu'),
+        layers.Conv2D(64, 3, padding='same', kernel_initializer=HE),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
+        layers.Conv2D(64, 3, padding='same', kernel_initializer=HE),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
         layers.MaxPooling2D(2),
         layers.Dropout(0.25),
 
         # Block 2: 24 -> 12
-        layers.Conv2D(128, 3, padding='same', activation='relu'),
-        layers.Conv2D(128, 3, padding='same', activation='relu'),
+        layers.Conv2D(128, 3, padding='same', kernel_initializer=HE),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
+        layers.Conv2D(128, 3, padding='same', kernel_initializer=HE),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
         layers.MaxPooling2D(2),
         layers.Dropout(0.25),
 
         # Block 3: 12 -> 6
-        layers.Conv2D(256, 3, padding='same', activation='relu'),
-        layers.Conv2D(256, 3, padding='same', activation='relu'),
+        layers.Conv2D(256, 3, padding='same', kernel_initializer=HE),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
         layers.MaxPooling2D(2),
-        layers.Dropout(0.25),
+        layers.Dropout(0.40),
 
-        # Block 4: 6 -> 3
-        layers.Conv2D(512, 3, padding='same', activation='relu'),
         layers.GlobalAveragePooling2D(),
-
-        # Head
-        layers.Dense(512, activation='relu'),
-        layers.Dropout(0.5),
-        layers.Dense(NUM_CLASSES, activation='softmax'),
+        layers.Dense(256, activation='relu', kernel_initializer=HE),
+        layers.Dropout(0.50),
+        layers.Dense(NUM_CLASSES, kernel_initializer=HE),   # logits, no softmax
 
     ], name='emotion_cnn')
 
 
-def compile_model(model: keras.Model, lr: float = 1e-3):
+def compile_model(model: keras.Model, lr: float = 3e-4):
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss='sparse_categorical_crossentropy',  # works with integer labels
+        loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=['accuracy'],
     )
 

@@ -159,7 +159,7 @@ def main(quick: bool = False):
 
     print(f'\n=== Building model ===')
     model = build_model()
-    compile_model(model, lr=1e-3)
+    compile_model(model)
     model_summary(model)
     model.summary()
 

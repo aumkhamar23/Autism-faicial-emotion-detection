@@ -55,9 +55,9 @@ def load_test_data() -> tf.data.Dataset:
 def collect_predictions(model, ds):
     y_true, y_pred = [], []
     for images, labels in ds:
-        preds = model.predict(images, verbose=0)
-        y_true.extend(np.argmax(labels.numpy(), axis=1))
-        y_pred.extend(np.argmax(preds, axis=1))
+        logits = model.predict(images, verbose=0)
+        y_true.extend(labels.numpy())           # already integers
+        y_pred.extend(np.argmax(logits, axis=1))
     return np.array(y_true), np.array(y_pred)
 
 
